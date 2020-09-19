@@ -6,6 +6,8 @@ edition = "2018"
 exclude = [
     "src/test.html",
 ]
+description = "hololive schedule info"
+license = "MIT"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
