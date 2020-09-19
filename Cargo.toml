@@ -3,7 +3,9 @@ name = "hololive"
 version = "0.1.0"
 authors = ["rainy-me <github@rainy.me>"]
 edition = "2018"
-
+exclude = [
+    "src/test.html",
+]
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
