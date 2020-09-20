@@ -1,4 +1,4 @@
-＃ hololive cli
+# hololive cli
 
 get hololive streaming schedule from [schedule.hololive.tv](https://schedule.hololive.tv/)
 
@@ -9,5 +9,5 @@ get hololive streaming schedule from [schedule.hololive.tv](https://schedule.hol
 hololive
 
 # show all streams recently
-hololive --all 
+hololive --all
 ```
