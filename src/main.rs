@@ -1,7 +1,7 @@
 use clap::{App, Arg};
 use colored::*;
 use pad::PadStr;
-use regex::{Captures, Regex};
+use regex::{Captures,Match, Regex};
 
 #[derive(Debug)]
 struct Stream {
@@ -52,16 +52,16 @@ fn get_schedule(base: &str) -> Vec<Stream> {
     .unwrap();
     re.captures_iter(base)
         .map(|cap| Stream {
-            member: match_or_empty(&cap, "member"),
-            url: match_or_empty(&cap, "url"),
-            start: match_or_empty(&cap, "start"),
-            is_streaming: cap.get(0).unwrap().as_str().contains("red solid"),
+            member: match_or_empty(cap.name("member") ),
+            url: match_or_empty(cap.name("url") ),
+            start: match_or_empty(cap.name("start")),
+            is_streaming: match_or_empty(cap.get(0)).contains("red solid"),
         })
         .collect::<Vec<Stream>>()
 }
 
-fn match_or_empty(capture: &Captures, name: &str) -> String {
-    match capture.name(name) {
+fn match_or_empty(maybe_match: Option<Match>) -> String {
+    match maybe_match {
         Some(matched) => matched.as_str().to_string(),
         _ => "".to_string(),
     }
