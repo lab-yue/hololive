@@ -26,8 +26,8 @@ impl fmt::Display for Stream {
             } else {
                 "".to_string()
             },
-            self.url.replace("https://www.youtube.com/watch?v=",""),
-            self.title.replace(" - YouTube","").yellow(),
+            self.url.replace("https://www.youtube.com/watch?v=", ""),
+            self.title.replace(" - YouTube", "").yellow(),
         )
     }
 }
@@ -70,20 +70,22 @@ async fn get_schedule(text: &str, with_title: bool) -> Vec<Stream> {
     "#,
     )
     .unwrap();
-    let streams = futures::stream::iter(re.captures_iter(text).map(get_match))
+    futures::stream::iter(re.captures_iter(text).map(get_match))
         .map(|s| {
             let mut stream = s;
             async move {
                 if with_title {
-                    stream.title = get_url_title(&stream.url).await.unwrap();
+                    match get_url_title(&stream.url).await {
+                        Ok(title) => stream.title = title,
+                        _ => {}
+                    }
                 };
                 stream
             }
         })
         .buffer_unordered(10)
         .collect::<Vec<Stream>>()
-        .await;
-    streams
+        .await
 }
 
 fn get_match<'a>(cap: Captures<'a>) -> Stream {
