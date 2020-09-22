@@ -8,7 +8,8 @@ exclude = [
 ]
 description = "hololive schedule info"
 license = "MIT"
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+repository = "https://github.com/rainy-me/hololive"
+keywords = ["hololive", "vtuber", "cli"]
 
 [dependencies]
 regex = "1"
