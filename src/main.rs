@@ -75,9 +75,9 @@ async fn get_schedule(text: &str, with_title: bool) -> Vec<Stream> {
             let mut stream = s;
             async move {
                 if with_title {
-                    match get_url_title(&stream.url).await {
-                        Ok(title) => stream.title = title,
-                        _ => {}
+                    stream.title = match get_url_title(&stream.url).await {
+                        Ok(title) =>  title,
+                        _ => "[failed to fetch]".red().to_string()
                     }
                 };
                 stream
@@ -106,8 +106,8 @@ fn match_or_empty(maybe_match: Option<Match>) -> String {
 }
 
 async fn get_url_title(url: &str) -> Result<String, Box<dyn std::error::Error>> {
-    let text = reqwest::get(url).await?.text().await?;
-    Ok(get_title(&text))
+   let text = reqwest::get(url).await?.text().await?;
+   Ok(get_title(&text))
 }
 
 fn get_title(text: &str) -> String {
