@@ -83,7 +83,7 @@ async fn get_schedule(text: &str, with_title: bool) -> Vec<Stream> {
                 stream
             }
         })
-        .buffer_unordered(10)
+        .buffered(30)
         .collect::<Vec<Stream>>()
         .await
 }
