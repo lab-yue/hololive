@@ -3,16 +3,19 @@ use colored::*;
 use futures::StreamExt;
 use pad::PadStr;
 use regex::{Captures, Match, Regex};
+use std::cell::RefCell;
 use std::fmt;
+use std::rc::Rc;
+
 use tokio;
 
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 struct Stream {
     member: String,
     url: String,
     start: String,
     is_streaming: bool,
-    title: String,
+    title: Rc<RefCell<String>>,
 }
 impl fmt::Display for Stream {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -27,7 +30,7 @@ impl fmt::Display for Stream {
                 "".to_string()
             },
             self.url.replace("https://www.youtube.com/watch?v=", ""),
-            self.title.replace(" - YouTube", "").yellow(),
+            self.title.borrow(),
         )
     }
 }
@@ -49,18 +52,37 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .await?
         .text()
         .await?;
-    let mut schedule = get_schedule(&text, matches.occurrences_of("t") != 0).await;
+    let mut schedule = get_schedule(&text).await;
+    let with_title = matches.occurrences_of("t") != 0;
     if matches.occurrences_of("a") == 0 {
         schedule.retain(|s| s.is_streaming);
     }
-    for x in schedule {
-        println!("{}", x);
-    }
+    print_streams(&schedule);
 
+    if with_title {
+        futures::stream::iter(schedule.iter().map(|s| (s, &schedule)))
+            .for_each_concurrent(10, |(stream, schedule_ref)| async move {
+                if with_title {
+                    *stream.title.borrow_mut() = match get_url_title(&stream.url).await {
+                        Ok(title) => title.replace(" - YouTube", "").yellow().to_string(),
+                        _ => "[failed to fetch]".red().to_string(),
+                    };
+                    print_streams(&schedule_ref);
+                };
+            })
+            .await
+    }
     Ok(())
 }
 
-async fn get_schedule(text: &str, with_title: bool) -> Vec<Stream> {
+fn print_streams(schedule: &Vec<Stream>) {
+    print!("\r");
+    for s in schedule {
+        println!("{}", s);
+    }
+}
+
+async fn get_schedule(text: &str) -> Vec<Stream> {
     let re = Regex::new(
         r#"(?x)
     thumbnail"[\s\S]+?
@@ -70,22 +92,7 @@ async fn get_schedule(text: &str, with_title: bool) -> Vec<Stream> {
     "#,
     )
     .unwrap();
-    futures::stream::iter(re.captures_iter(text).map(get_match))
-        .map(|s| {
-            let mut stream = s;
-            async move {
-                if with_title {
-                    stream.title = match get_url_title(&stream.url).await {
-                        Ok(title) =>  title,
-                        _ => "[failed to fetch]".red().to_string()
-                    }
-                };
-                stream
-            }
-        })
-        .buffered(30)
-        .collect::<Vec<Stream>>()
-        .await
+    re.captures_iter(text).map(get_match).collect()
 }
 
 fn get_match<'a>(cap: Captures<'a>) -> Stream {
@@ -94,7 +101,7 @@ fn get_match<'a>(cap: Captures<'a>) -> Stream {
         url: match_or_empty(cap.name("url")),
         start: match_or_empty(cap.name("start")),
         is_streaming: match_or_empty(cap.get(0)).contains("red solid"),
-        title: "".to_string(),
+        title: Rc::new(RefCell::new("fetching..".to_string())),
     }
 }
 
@@ -106,8 +113,8 @@ fn match_or_empty(maybe_match: Option<Match>) -> String {
 }
 
 async fn get_url_title(url: &str) -> Result<String, Box<dyn std::error::Error>> {
-   let text = reqwest::get(url).await?.text().await?;
-   Ok(get_title(&text))
+    let text = reqwest::get(url).await?.text().await?;
+    Ok(get_title(&text))
 }
 
 fn get_title(text: &str) -> String {
@@ -123,7 +130,7 @@ mod tests {
     const TEST_HTML: &str = include_str!("./test.html");
     #[tokio::test]
     async fn test_get_schedule() -> Result<(), Box<dyn std::error::Error>> {
-        let mut schedule = crate::get_schedule(TEST_HTML, false).await;
+        let mut schedule = crate::get_schedule(TEST_HTML).await;
         assert_eq!(schedule.len(), 69);
         schedule.retain(|s| s.is_streaming);
         assert_eq!(schedule.len(), 6);
